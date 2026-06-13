@@ -34,7 +34,8 @@ export default function SceneMic({
   function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (
       (event.pointerType === "mouse" && event.button !== 0) ||
-      (isBusy && !isListening)
+      (isBusy && !isListening) ||
+      (!speechAvailable && !isListening)
     ) {
       return;
     }
@@ -97,7 +98,8 @@ export default function SceneMic({
       event.repeat ||
       (event.key !== " " && event.key !== "Enter") ||
       isListening ||
-      isBusy
+      isBusy ||
+      !speechAvailable
     ) {
       return;
     }
@@ -139,8 +141,14 @@ export default function SceneMic({
       onPointerCancel={handlePointerCancel}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      aria-label={isListening || isBusy ? copy.micWaitAria : copy.micPressAria}
-      disabled={isBusy && !isListening}
+      aria-label={
+        isListening || isBusy
+          ? copy.micWaitAria
+          : speechAvailable
+            ? copy.micPressAria
+            : copy.micUnavailable
+      }
+      disabled={(isBusy || !speechAvailable) && !isListening}
     >
       <span className="scene-mic-icon" aria-hidden="true" />
       <span className="scene-mic-text">

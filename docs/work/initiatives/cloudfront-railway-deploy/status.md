@@ -1,6 +1,6 @@
 ---
 state: in-progress
-last_updated: 2026-05-06
+last_updated: 2026-06-13
 owner: Orchestrator
 ---
 
@@ -19,12 +19,13 @@ owner: Orchestrator
 
 ## Current Handoff
 
-Cloud deployment is live. Railway is the API origin and CloudFront is the
-browser-facing URL.
+Cloud deployment is paused at the backend boundary. CloudFront/S3 are still
+serving the browser-facing site with a temporary warning banner, and the
+Railway API deployment is removed.
 
 ## Resource Outputs
 
-- Railway service: `vibecoding-colective-macpaw`
+- Railway service: `vibecoding-colective-macpaw` (backend deployment removed)
 - Railway URL: `https://vibecoding-colective-macpaw-production.up.railway.app`
 - S3 bucket: `vibecoding-colective-macpaw-frontend`
 - CloudFront distribution: `E1LXAVVGHT4YKQ`
@@ -56,6 +57,16 @@ browser-facing URL.
 
 ## Validation
 
+- 2026-06-13 pause validation:
+  - CloudFront frontend deploy completed and invalidation
+    `IEJQJYLFSHY7OWLTZDCCFTBPA4` finished.
+  - `https://exit-macpaw-space.mykyyta.link/` returned `200` and rendered the
+    temporary pause warning.
+  - `https://exit-macpaw-space.mykyyta.link/health` returned `404 Application
+    not found`.
+  - `https://exit-macpaw-space.mykyyta.link/api/status` returned
+    `404 Application not found`.
+  - Railway deployment `d88a3d9d-5e15-4b25-882f-704b3d22c5d2` is `REMOVED`.
 - Railway `/health` returned `{"ok":true}`.
 - Railway `/api/status` returned `200` with Claude and ElevenLabs configured.
 - CloudFront `/` returned `200`.

@@ -72,6 +72,7 @@ import type {
 } from "./types/scene";
 
 const NAME_TAG_ACTORS: QuestNameTagActor[] = ["sofia", "dan", "hoover", "fixel"];
+const SERVICE_PAUSED = true;
 
 function createHiddenNameTags(): CharacterNameTagState {
   return {
@@ -890,12 +891,30 @@ export function App() {
   }
 
   function openLeaderboardScreen() {
+    if (SERVICE_PAUSED) {
+      setLeaderboardOpen(true);
+      setLeaderboardEntries([]);
+      setLeaderboardMessage(
+        "Функціонал тимчасово не працює, тому таблиця результатів зараз недоступна.",
+      );
+      return;
+    }
+
     setLeaderboardOpen(true);
     void loadLeaderboard();
   }
 
   return (
     <main className={`quest-app quest-app--${roomState}`}>
+      {SERVICE_PAUSED ? (
+        <aside className="service-paused-banner" aria-live="polite">
+          <strong>Тимчасова пауза</strong>
+          <span>
+            Сайт лишається відкритим, але голосовий квест, рейтинг і серверні
+            функції зараз не працюють.
+          </span>
+        </aside>
+      ) : null}
       <RoomScene
         bubble={bubble}
         leaderboard={{
@@ -927,7 +946,7 @@ export function App() {
       <SceneMic
         isListening={isListening}
         isBusy={voiceBusy}
-        speechAvailable={speechAvailable}
+        speechAvailable={!SERVICE_PAUSED && speechAvailable}
         voiceLanguage={voiceLanguage}
         onStart={startListening}
         onStop={stopListening}

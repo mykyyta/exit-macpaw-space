@@ -37,6 +37,38 @@
   bottom: 18%;
 }
 
+.service-paused-banner {
+  position: absolute;
+  left: 50%;
+  top: max(0.9rem, env(safe-area-inset-top));
+  z-index: 40;
+  display: grid;
+  gap: 0.24rem;
+  width: min(620px, calc(100vw - 2rem));
+  border: 1px solid color-mix(in oklch, var(--amber), transparent 24%);
+  border-radius: 8px;
+  padding: 0.72rem 0.9rem;
+  background: color-mix(in oklch, var(--stage), transparent 4%);
+  color: oklch(93% 0.025 86);
+  box-shadow:
+    0 18px 38px color-mix(in oklch, var(--ink), transparent 72%),
+    inset 0 1px 0 color-mix(in oklch, var(--plaster-lit), transparent 86%);
+  transform: translateX(-50%);
+}
+
+.service-paused-banner strong {
+  color: color-mix(in oklch, var(--amber), var(--plaster-lit) 14%);
+  font-size: 0.86rem;
+  font-weight: 860;
+  letter-spacing: 0;
+}
+
+.service-paused-banner span {
+  font-size: 0.78rem;
+  font-weight: 620;
+  line-height: 1.32;
+}
+
 .speech-bubble span {
   display: block;
   margin-bottom: 4px;
@@ -97,7 +129,8 @@
 }
 
 .scene-mic:disabled {
-  cursor: wait;
+  cursor: not-allowed;
+  opacity: 0.76;
 }
 
 .scene-mic-icon {
