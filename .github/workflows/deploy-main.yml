@@ -1,9 +1,7 @@
 name: Deploy Main
 
 on:
-  push:
-    branches:
-      - main
+  # Temporarily disabled while the production backend is intentionally stopped.
   workflow_dispatch:
 
 concurrency:
