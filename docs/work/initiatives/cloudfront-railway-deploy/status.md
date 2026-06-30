@@ -19,9 +19,9 @@ owner: Orchestrator
 
 ## Current Handoff
 
-Cloud deployment is being restored for the 2026-06-30 demo. The expected live
-shape is CloudFront/S3 serving the browser-facing site and Railway serving the
-Express API behind `/api/*` and `/health`.
+Cloud deployment is restored for the 2026-06-30 demo. CloudFront/S3 serves the
+browser-facing site and Railway serves the Express API behind `/api/*` and
+`/health`.
 
 ## Resource Outputs
 
@@ -48,10 +48,17 @@ the deployment.
 
 - 2026-06-30 demo restore:
   - Frontend pause mode disabled in `src/client/App.tsx`.
-  - Manual GitHub Actions deploy should refresh Railway backend and CloudFront
-    frontend.
-  - Post-deploy smoke targets: custom-domain `/`, `/health`, `/api/status`, and
-    `/api/leaderboard?limit=3`.
+  - Manual GitHub Actions deploy succeeded:
+    `https://github.com/mykyyta/exit-macpaw-space/actions/runs/28439329452`.
+  - Custom-domain `/` returned `200` through CloudFront/S3.
+  - Custom-domain frontend bundle no longer contains pause-warning copy.
+  - Custom-domain `/health` returned `{"ok":true}` through CloudFront/Railway.
+  - Custom-domain `/api/status` returned `200` with Claude and ElevenLabs
+    configured.
+  - Custom-domain `/api/leaderboard?limit=3` returned `200` with newest-first
+    entries.
+  - Live `/api/voice-turn` smoke returned `sofia-introduced`, Sofiia/Dan name
+    tags, and ElevenLabs `audio/mpeg` without `audioError`.
 - 2026-06-13 pause validation:
   - CloudFront frontend deploy completed and invalidation
     `IEJQJYLFSHY7OWLTZDCCFTBPA4` finished.
