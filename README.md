@@ -1,43 +1,51 @@
-# Exit MacPaw Space - Vibecoding Collective
+# Exit MacPaw Space
 
-Vibecoding Collective is a small voice-first AI quest-room pet project centered
-on speech, audio, and conversational interaction.
+**A voice-first escape room built with AI agents, ElevenLabs, and a small
+MacPaw Space-inspired world.**
 
-The current prototype is **Exit MacPaw Space: Badge Not Found**. The player is
-in a simplified MacPaw Space room after a vibecoding event and has to find the
-exit code by speaking to the right characters in the right way. Spoken input is
-the intended interaction: who the player addresses matters, the room state moves
-through voice turns, and spoken output closes the loop when provider credentials
-are configured.
+The player is locked inside a simplified MacPaw Space after a vibe-coding event
+and has to find the exit code by speaking to the right characters in the right
+way. The interaction is intentionally voice-first: who the player addresses
+matters, the room state changes through voice turns, and spoken replies close
+the loop when provider credentials are configured.
 
-The current cast is Sofiia, Dan, Hoover, and Fixel. Sofiia opens the room and
-keeps unaddressed turns grounded, Dan is tied to the missing badge and final
-code entry, Hoover reveals the Fixel clue only after a gentle direct address,
-and Fixel is a nonverbal cat whose visual state reveals the badge code.
+The idea was born during an ElevenLabs event. The first playable loop was built
+there, then continued as a pet project and shaped into a fuller desktop and
+mobile demo.
 
-## Current Production State
+<p align="center">
+  <img src="docs/assets/exit-macpaw-space-desktop.png" alt="Exit MacPaw Space desktop screenshot" width="100%">
+</p>
 
-The public demo is intended to run through the browser-facing CloudFront/custom
-domain entrypoint with the Express API behind the same origin. Voice play and
-leaderboard features require the production backend and provider credentials to
-be available.
+<p align="center">
+  <img src="docs/assets/exit-macpaw-space-mobile.png" alt="Exit MacPaw Space mobile screenshot" width="38%">
+</p>
 
-## Demo Promise
+## What It Is
 
-- A fullscreen quest-room scene, not a dashboard.
-- Voice-first player input with minimal UI chrome.
-- Ukrainian and English spoken play without an in-room language selector.
-- Distinct spoken character roles when ElevenLabs TTS is configured.
-- Server-side provider calls so API keys never ship to the browser.
-- A small, explainable happy path that can be shown live in a few minutes.
+- A short browser-based escape room.
+- Voice-first player input with minimal UI.
+- A compact cast: Sofiia, Dan, Hoover, and Fixel.
+- A MacPaw Space-inspired room with a small Mac museum reference.
+- Ukrainian and English play without an in-room language selector.
+- Server-side AI provider calls so API keys never ship to the browser.
 
-## Tech Snapshot
+## Live Demo
+
+Public URL: [exit-macpaw-space.mykyyta.link](https://exit-macpaw-space.mykyyta.link/)
+
+The public demo is designed to run through the browser-facing
+CloudFront/custom-domain entrypoint with the Express API behind the same origin.
+Voice play, generated replies, text-to-speech, and leaderboard features depend
+on the production backend and configured provider credentials.
+
+## Stack
 
 - TypeScript
 - Vite + React
 - Node.js + Express
-- Optional Claude text generation behind the Express boundary
-- Optional ElevenLabs STT/TTS and local Fixel sound effects
+- Claude-compatible text generation behind the server boundary
+- ElevenLabs STT/TTS paths when configured
 - Optional DynamoDB-backed leaderboard storage
 
 ## Run Locally
