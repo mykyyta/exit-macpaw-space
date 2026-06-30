@@ -9,9 +9,10 @@ way. The interaction is intentionally voice-first: who the player addresses
 matters, the room state changes through voice turns, and spoken replies close
 the loop when provider credentials are configured.
 
-The idea was born during an ElevenLabs event. The first playable loop was built
-there, then continued as a pet project and shaped into a fuller desktop and
-mobile demo.
+The idea was born during a
+[Vibecoding Collective event](https://vibecoders.global/) focused on
+ElevenLabs tools. The first playable loop was built there, then continued as a
+pet project and shaped into a fuller desktop and mobile demo.
 
 <p align="center">
   <img src="docs/assets/exit-macpaw-space-desktop.png" alt="Exit MacPaw Space desktop screenshot" width="100%">
