@@ -7,7 +7,11 @@ set -euo pipefail
 if [[ "${CI:-}" == "true" ]]; then
   AWS_PROFILE="${AWS_PROFILE:-}"
 else
-  AWS_PROFILE="${AWS_PROFILE:-thehrdwood}"
+  AWS_PROFILE="${AWS_PROFILE:-}"
+  if [[ -z "$AWS_PROFILE" ]]; then
+    echo "Error: set AWS_PROFILE before deploying CloudFront assets." >&2
+    exit 1
+  fi
 fi
 AWS_S3_FRONTEND_BUCKET="${AWS_S3_FRONTEND_BUCKET:-}"
 CLOUDFRONT_DISTRIBUTION_ID="${CLOUDFRONT_DISTRIBUTION_ID:-}"

@@ -7,7 +7,6 @@ variable "aws_region" {
 variable "project_slug" {
   type        = string
   description = "Resource name prefix."
-  default     = "vibecoding-colective-macpaw"
 }
 
 variable "railway_api_domain" {

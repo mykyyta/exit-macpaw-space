@@ -23,8 +23,8 @@ owner: Orchestrator
 
 ## Current Handoff
 
-Cloud deploy is complete. Public URL:
-`https://d1uswfdwd46dyc.cloudfront.net`.
+Cloud deploy is complete. The public URL is available from the deployment
+configuration and GitHub repository variables.
 
 ## Validation
 
@@ -53,21 +53,21 @@ Cloud deploy is complete. Public URL:
   redesign.
 - `git diff --check` passed after the left-screen leaderboard redesign.
 - `terraform -chdir=infra validate` passed after adding the DynamoDB table.
-- `AWS_PROFILE=thehrdwood npm run infra:plan` showed one DynamoDB table create
+- `AWS_PROFILE=<profile> npm run infra:plan` showed one DynamoDB table create
   and no destroys.
-- `AWS_PROFILE=thehrdwood npm run infra:apply` updated CloudFront TLS but failed
+- `AWS_PROFILE=<profile> npm run infra:apply` updated CloudFront TLS but failed
   on DynamoDB `CreateTable` with IAM `AccessDenied`.
-- After IAM permissions were added, `AWS_PROFILE=thehrdwood npm run infra:apply`
+- After IAM permissions were added, `AWS_PROFILE=<profile> npm run infra:apply`
   created `vibecoding-colective-macpaw-leaderboard`.
 - `aws dynamodb describe-table` confirmed the leaderboard table is `ACTIVE` with
   `PAY_PER_REQUEST` billing and keys `leaderboardId` + `createdKey`.
-- `AWS_PROFILE=thehrdwood terraform -chdir=infra plan -var-file=app.tfvars`
+- `AWS_PROFILE=<profile> terraform -chdir=infra plan -var-file=app.tfvars`
   returned `No changes`.
 - Railway variables were configured for DynamoDB-backed leaderboard storage.
 - `npm run deploy:railway` deployed the backend successfully.
 - Railway `/health` returned `{"ok":true}`.
 - Railway `/api/leaderboard?limit=3` returned an empty newest-first leaderboard.
-- `AWS_PROFILE=thehrdwood npm run deploy:cloudfront` uploaded frontend assets
+- `AWS_PROFILE=<profile> npm run deploy:cloudfront` uploaded frontend assets
   and created CloudFront invalidation `ICG0RNUFYA5L7GQLHVOJ3L4551`.
 - CloudFront invalidation completed.
 - CloudFront `/`, `/health`, `/api/status`, and `/api/leaderboard?limit=3`

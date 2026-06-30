@@ -8,13 +8,7 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket         = "pult-terraform-state"
-    key            = "vibecoding-colective/terraform.tfstate"
-    region         = "eu-central-1"
-    dynamodb_table = "pult-terraform-locks"
-    encrypt        = true
-  }
+  backend "s3" {}
 }
 
 provider "aws" {

@@ -13,13 +13,13 @@ permissions:
 
 env:
   NODE_VERSION: "20"
-  RAILWAY_PROJECT_ID: 62e4c285-0732-4c86-89b9-ddf58d15a20d
-  RAILWAY_ENVIRONMENT: production
-  RAILWAY_SERVICE: vibecoding-colective-macpaw
-  AWS_REGION: eu-central-1
-  AWS_S3_FRONTEND_BUCKET: vibecoding-colective-macpaw-frontend
-  CLOUDFRONT_DISTRIBUTION_ID: E1LXAVVGHT4YKQ
-  CLOUDFRONT_URL: https://d1uswfdwd46dyc.cloudfront.net
+  RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+  RAILWAY_ENVIRONMENT: ${{ vars.RAILWAY_ENVIRONMENT }}
+  RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_S3_FRONTEND_BUCKET: ${{ vars.AWS_S3_FRONTEND_BUCKET }}
+  CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+  CLOUDFRONT_URL: ${{ vars.CLOUDFRONT_URL }}
 
 jobs:
   deploy:
@@ -49,6 +49,13 @@ jobs:
           test -n "$RAILWAY_TOKEN" || { echo "Missing RAILWAY_TOKEN"; exit 1; }
           test -n "$AWS_ACCESS_KEY_ID" || { echo "Missing AWS_ACCESS_KEY_ID"; exit 1; }
           test -n "$AWS_SECRET_ACCESS_KEY" || { echo "Missing AWS_SECRET_ACCESS_KEY"; exit 1; }
+          test -n "$RAILWAY_PROJECT_ID" || { echo "Missing repository variable RAILWAY_PROJECT_ID"; exit 1; }
+          test -n "$RAILWAY_ENVIRONMENT" || { echo "Missing repository variable RAILWAY_ENVIRONMENT"; exit 1; }
+          test -n "$RAILWAY_SERVICE" || { echo "Missing repository variable RAILWAY_SERVICE"; exit 1; }
+          test -n "$AWS_REGION" || { echo "Missing repository variable AWS_REGION"; exit 1; }
+          test -n "$AWS_S3_FRONTEND_BUCKET" || { echo "Missing repository variable AWS_S3_FRONTEND_BUCKET"; exit 1; }
+          test -n "$CLOUDFRONT_DISTRIBUTION_ID" || { echo "Missing repository variable CLOUDFRONT_DISTRIBUTION_ID"; exit 1; }
+          test -n "$CLOUDFRONT_URL" || { echo "Missing repository variable CLOUDFRONT_URL"; exit 1; }
 
       - name: Typecheck
         run: npm run typecheck

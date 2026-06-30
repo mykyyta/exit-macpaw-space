@@ -9,7 +9,7 @@ owner: Planner
 ## Purpose
 
 Create a stable cloud deployment path for the current voice quest prototype
-using the Pult/thehrdwood AWS and Railway accounts.
+using the project AWS and Railway accounts.
 
 ## Outcome Shape
 

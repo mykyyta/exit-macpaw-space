@@ -66,7 +66,7 @@ Tunnel requirements:
 - The developer keeps the laptop awake and connected.
 - A cloud deployment is preferred once the URL must be stable.
 
-### Verified ngrok Flow
+### Verified Tunnel Flow
 
 Current local flow:
 
@@ -77,19 +77,15 @@ ngrok http 3000
 
 Verified on 2026-05-06:
 
-- Vite UI served at `http://localhost:3000`.
-- Express API served at `http://localhost:8787`.
-- ngrok public URL forwarded to `http://localhost:3000`.
-- Public root URL returned `HTTP 200`.
-- Public `/api/status` URL returned the Express status JSON through the Vite proxy.
+- Vite UI serves at `http://localhost:3000`.
+- Express API serves at `http://localhost:8787`.
+- The tunnel public URL forwards to `http://localhost:3000`.
+- Public root URL should return `HTTP 200`.
+- Public `/api/status` should return the Express status JSON through the Vite
+  proxy.
 
-The tested ngrok URL was:
-
-```text
-https://shingle-washcloth-outreach.ngrok-free.dev
-```
-
-This URL is an ephemeral tunnel URL and should not be treated as stable project configuration.
+Tunnel URLs are ephemeral and should not be committed as stable project
+configuration.
 
 Vite requires explicit allowed hosts for ngrok. The project currently allows:
 

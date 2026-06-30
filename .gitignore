@@ -6,6 +6,8 @@ node_modules/
 dist/
 .terraform/
 **/.terraform/
+infra/app.tfvars
+infra/backend.hcl
 .DS_Store
 .claude/
 .codex/

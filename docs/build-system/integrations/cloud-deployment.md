@@ -10,9 +10,8 @@ project needs a stable public URL.
 
 ## Decision
 
-- **Frontend edge entrypoint:** AWS S3 + CloudFront in the `thehrdwood` AWS
-  account.
-- **Backend runtime:** one Railway web service in the Pult Railway account.
+- **Frontend edge entrypoint:** AWS S3 + CloudFront in the project AWS account.
+- **Backend runtime:** one Railway web service in the project Railway account.
 - **Environment model:** one cloud environment only. Do not create separate
   staging and production stacks for this prototype.
 - **Public request shape:** CloudFront is the browser-facing URL. It serves
@@ -23,9 +22,9 @@ project needs a stable public URL.
   configuration only; the parent zone owner manually adds ACM validation and
   CloudFront alias records. The default CloudFront URL remains live as a
   fallback after the custom domain alias is added.
-- **Terraform state:** reuse the Pult Terraform state bucket with an isolated
-  key: `vibecoding-colective/terraform.tfstate`.
-- **AWS profile:** `thehrdwood` for all privileged AWS and Terraform commands.
+- **Terraform state:** use an S3 backend configured through local
+  `infra/backend.hcl`.
+- **AWS profile:** set `AWS_PROFILE` for privileged AWS and Terraform commands.
 
 ## Why This Shape Is Sufficient
 
@@ -64,31 +63,30 @@ provider API keys or AWS credentials.
 
 ## Required Manual Inputs
 
-Before applying Terraform, replace the placeholder Railway domain in
-`infra/app.tfvars`. The value must be a Railway public domain without
-`https://`.
+Before applying Terraform, create local config files from the public examples:
 
-Current value:
-
-```text
-vibecoding-colective-macpaw-production.up.railway.app
+```bash
+cp infra/backend.example.hcl infra/backend.hcl
+cp infra/app.tfvars.example infra/app.tfvars
 ```
+
+Fill `infra/backend.hcl` with the real Terraform state bucket, key, region, and
+lock table. Fill `infra/app.tfvars` with the real project slug and Railway
+public domain. The Railway domain must not include `https://`.
 
 To attach a custom domain whose parent domain is hosted in another Route53
 account, use a two-step parent-zone alias flow:
 
 1. Set `custom_domain_name` in `infra/app.tfvars` to the desired app subdomain,
-   for example `exit-macpaw-space.mykyyta.link`, and keep
-   `enable_custom_domain_alias = false`.
-2. Run `AWS_PROFILE=thehrdwood npm run infra:apply`. Terraform creates the ACM
+   and keep `enable_custom_domain_alias = false`.
+2. Run `AWS_PROFILE=<profile> npm run infra:apply`. Terraform creates the ACM
    certificate in `us-east-1` and outputs
    `custom_domain_certificate_validation_records`.
 3. In the parent Route53 hosted zone, add the output `CNAME` record for ACM DNS
    validation.
 4. Wait until the ACM certificate is `ISSUED`.
-5. Set `enable_custom_domain_alias = true` and run
-   `AWS_PROFILE=thehrdwood npm run infra:apply` again. Terraform attaches the
-   custom domain to CloudFront.
+5. Set `enable_custom_domain_alias = true` and run the Terraform apply command
+   again. Terraform attaches the custom domain to CloudFront.
 6. In the parent Route53 hosted zone, add either a `CNAME` record from the
    subdomain to `cloudfront_alias_target`, or `A` and `AAAA` alias records using
    `cloudfront_alias_target` as the alias target and
@@ -125,17 +123,17 @@ npm run deploy:railway
 Create or copy the Railway public domain into `infra/app.tfvars`, then plan:
 
 ```bash
-AWS_PROFILE=thehrdwood npm run infra:plan
+AWS_PROFILE=<profile> npm run infra:plan
 ```
 
 After reviewing the plan, apply Terraform, then deploy the frontend:
 
 ```bash
-AWS_PROFILE=thehrdwood npm run infra:apply
+AWS_PROFILE=<profile> npm run infra:apply
 ```
 
 ```bash
-AWS_PROFILE=thehrdwood npm run deploy:cloudfront
+AWS_PROFILE=<profile> npm run deploy:cloudfront
 ```
 
 ## GitHub Actions
@@ -160,6 +158,16 @@ Required GitHub repository secrets:
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 
+Required GitHub repository variables:
+
+- `RAILWAY_PROJECT_ID`
+- `RAILWAY_ENVIRONMENT`
+- `RAILWAY_SERVICE`
+- `AWS_REGION`
+- `AWS_S3_FRONTEND_BUCKET`
+- `CLOUDFRONT_DISTRIBUTION_ID`
+- `CLOUDFRONT_URL`
+
 The workflow intentionally uses the existing single environment and does not
 create or mutate Terraform-managed infrastructure.
 
@@ -167,7 +175,8 @@ create or mutate Terraform-managed infrastructure.
 
 - **Paid resources:** Railway service, S3, CloudFront, and DynamoDB can incur
   cost. Apply only after approval.
-- **Wrong account:** always use `AWS_PROFILE=thehrdwood`.
+- **Wrong account:** always set `AWS_PROFILE` explicitly before privileged
+  commands.
 - **Broken API origin:** CloudFront needs the exact Railway domain before
   Terraform apply.
 - **Incomplete DNS validation:** CloudFront will reject the custom domain until
@@ -178,12 +187,10 @@ create or mutate Terraform-managed infrastructure.
 - **CloudFront propagation:** distribution and invalidations can take minutes;
   keep the local tunnel path as a fallback during development.
 - **Custom domain fallback:** keep the default CloudFront distribution URL
-  available even after the custom domain is attached.
+  available internally even after the custom domain is attached.
 
 ## Live Resource Outputs
 
-- Railway service: `vibecoding-colective-macpaw`
-- Railway URL: `https://vibecoding-colective-macpaw-production.up.railway.app`
-- S3 bucket: `vibecoding-colective-macpaw-frontend`
-- CloudFront distribution: `E1LXAVVGHT4YKQ`
-- CloudFront URL: `https://d1uswfdwd46dyc.cloudfront.net`
+Live resource identifiers are intentionally kept out of public docs. Read them
+from Terraform outputs, Railway, AWS, or GitHub repository variables when
+operating the deployment.
