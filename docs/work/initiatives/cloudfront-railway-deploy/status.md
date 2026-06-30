@@ -1,6 +1,6 @@
 ---
 state: in-progress
-last_updated: 2026-06-13
+last_updated: 2026-06-30
 owner: Orchestrator
 ---
 
@@ -19,9 +19,9 @@ owner: Orchestrator
 
 ## Current Handoff
 
-Cloud deployment is paused at the backend boundary. CloudFront/S3 are still
-serving the browser-facing site with a temporary warning banner, and the
-Railway API deployment is removed.
+Cloud deployment is being restored for the 2026-06-30 demo. The expected live
+shape is CloudFront/S3 serving the browser-facing site and Railway serving the
+Express API behind `/api/*` and `/health`.
 
 ## Resource Outputs
 
@@ -46,6 +46,12 @@ the deployment.
 
 ## Validation
 
+- 2026-06-30 demo restore:
+  - Frontend pause mode disabled in `src/client/App.tsx`.
+  - Manual GitHub Actions deploy should refresh Railway backend and CloudFront
+    frontend.
+  - Post-deploy smoke targets: custom-domain `/`, `/health`, `/api/status`, and
+    `/api/leaderboard?limit=3`.
 - 2026-06-13 pause validation:
   - CloudFront frontend deploy completed and invalidation
     `IEJQJYLFSHY7OWLTZDCCFTBPA4` finished.

@@ -17,9 +17,10 @@ and Fixel is a nonverbal cat whose visual state reveals the badge code.
 
 ## Current Production State
 
-The public frontend may remain available while the production backend is paused.
-When paused, voice play, leaderboard writes, and other server-backed features are
-intentionally unavailable and the app shows a warning in the scene.
+The public demo is intended to run through the browser-facing CloudFront/custom
+domain entrypoint with the Express API behind the same origin. Voice play and
+leaderboard features require the production backend and provider credentials to
+be available.
 
 ## Demo Promise
 

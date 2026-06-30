@@ -138,11 +138,11 @@ AWS_PROFILE=<profile> npm run deploy:cloudfront
 
 ## GitHub Actions
 
-Automatic deployment from `main` is temporarily disabled while the production
-backend is intentionally stopped. The workflow file remains at
-`.github/workflows/deploy-main.yml` for future reactivation.
+Automatic deployment from `main` is disabled for controlled demo operations.
+Use the manual `workflow_dispatch` trigger in `.github/workflows/deploy-main.yml`
+when the production backend and frontend should be refreshed.
 
-When re-enabled, the workflow:
+The workflow:
 
 1. installs dependencies;
 2. typechecks;

@@ -72,7 +72,7 @@ import type {
 } from "./types/scene";
 
 const NAME_TAG_ACTORS: QuestNameTagActor[] = ["sofia", "dan", "hoover", "fixel"];
-const SERVICE_PAUSED = true;
+const SERVICE_PAUSED = false;
 
 function createHiddenNameTags(): CharacterNameTagState {
   return {
