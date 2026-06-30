@@ -123,6 +123,23 @@
   user-select: none;
 }
 
+.scene-mic::before,
+.scene-mic::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+  border: 1px solid color-mix(in oklch, var(--green), transparent 48%);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scene-mic::after {
+  inset: -15px;
+  border-color: color-mix(in oklch, var(--amber), transparent 58%);
+}
+
 .scene-mic:focus-visible {
   outline: 3px solid color-mix(in oklch, var(--green), transparent 24%);
   outline-offset: 3px;
@@ -141,6 +158,14 @@
   background:
     radial-gradient(circle at 50% 38%, color-mix(in oklch, var(--green), var(--plaster-lit) 18%), var(--green)),
     var(--green);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--plaster-lit), transparent 78%),
+    0 0 20px color-mix(in oklch, var(--green), transparent 68%);
+  overflow: hidden;
+  transition:
+    background 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
 }
 
 .scene-mic-icon::before {
@@ -165,6 +190,28 @@
   border-radius: 999px;
   transform: translateX(-50%);
   background: oklch(92% 0.02 100);
+}
+
+.scene-mic-meter {
+  position: absolute;
+  left: 50%;
+  top: 9px;
+  display: grid;
+  grid-template-columns: repeat(3, 3px);
+  gap: 2px;
+  align-items: end;
+  height: 18px;
+  opacity: 0;
+  transform: translateX(-50%);
+}
+
+.scene-mic-meter i {
+  display: block;
+  width: 3px;
+  height: 6px;
+  border-radius: 999px;
+  background: oklch(94% 0.018 100);
+  transform-origin: bottom;
 }
 
 .scene-mic-copy {
@@ -195,8 +242,22 @@
   white-space: nowrap;
 }
 
-.scene-mic--active .scene-mic-icon::before {
-  animation: mic-pulse 1.2s var(--ease-out) infinite;
+.scene-mic--primed {
+  border-color: color-mix(in oklch, var(--amber), transparent 34%);
+  box-shadow:
+    0 0 28px color-mix(in oklch, var(--amber), transparent 62%),
+    0 12px 30px color-mix(in oklch, var(--ink), transparent 76%);
+}
+
+.scene-mic--primed::after {
+  animation: mic-prime-ring 180ms var(--ease-out) both;
+}
+
+.scene-mic--primed .scene-mic-icon {
+  background:
+    radial-gradient(circle at 50% 38%, color-mix(in oklch, var(--amber), var(--plaster-lit) 12%), var(--amber)),
+    var(--amber);
+  transform: scale(1.04);
 }
 
 .scene-mic--active {
@@ -205,4 +266,37 @@
     0 0 34px color-mix(in oklch, var(--green), transparent 58%),
     0 10px 28px color-mix(in oklch, var(--ink), transparent 75%);
   transform: translateX(-50%) translateY(1px) scale(0.99);
+}
+
+.scene-mic--active .scene-mic-icon::before {
+  opacity: 0;
+}
+
+.scene-mic--active .scene-mic-icon::after {
+  top: 31px;
+  width: 20px;
+}
+
+.scene-mic--active .scene-mic-meter {
+  opacity: 1;
+}
+
+.scene-mic--active .scene-mic-meter i {
+  animation: mic-meter-bounce 660ms ease-in-out infinite alternate;
+}
+
+.scene-mic--active .scene-mic-meter i:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.scene-mic--active .scene-mic-meter i:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.scene-mic--active::before {
+  animation: mic-listening-ring 1.4s var(--ease-out) infinite;
+}
+
+.scene-mic--active::after {
+  animation: mic-listening-ring 1.4s 420ms var(--ease-out) infinite;
 }

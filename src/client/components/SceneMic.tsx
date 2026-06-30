@@ -1,6 +1,12 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
 import type { QuestLanguage } from "../../shared/voice";
+import {
+  getMicStartDelayMs,
+  playMicEndSignal,
+  playMicStartSignal,
+  pulseMicHaptic,
+} from "../audio/mic-feedback";
 import { unlockReplyAudio } from "../audio/unlock";
 import { VOICE_COPY } from "../copy/voice-copy";
 
@@ -20,7 +26,10 @@ export default function SceneMic({
   onStop: () => void;
 }) {
   const activePointerIdRef = useRef<number | null>(null);
+  const startTimerRef = useRef<number | null>(null);
   const keyboardHoldActiveRef = useRef(false);
+  const ignoreNextClickRef = useRef(false);
+  const [isPrimed, setIsPrimed] = useState(false);
   const copy = VOICE_COPY[voiceLanguage];
   const prompt =
     isListening
@@ -30,6 +39,49 @@ export default function SceneMic({
       : speechAvailable
         ? copy.micReady
         : copy.micUnavailable;
+
+  useEffect(() => {
+    return () => {
+      if (startTimerRef.current !== null) {
+        window.clearTimeout(startTimerRef.current);
+      }
+    };
+  }, []);
+
+  function clearPendingStart() {
+    if (startTimerRef.current === null) {
+      return false;
+    }
+
+    window.clearTimeout(startTimerRef.current);
+    startTimerRef.current = null;
+    setIsPrimed(false);
+    return true;
+  }
+
+  function startAfterSignal() {
+    clearPendingStart();
+    setIsPrimed(true);
+    playMicStartSignal();
+    pulseMicHaptic();
+
+    startTimerRef.current = window.setTimeout(() => {
+      startTimerRef.current = null;
+      setIsPrimed(false);
+      onStart();
+    }, getMicStartDelayMs());
+  }
+
+  function stopAfterSignal() {
+    const cancelledPendingStart = clearPendingStart();
+
+    if (cancelledPendingStart && !isListening) {
+      return;
+    }
+
+    playMicEndSignal();
+    onStop();
+  }
 
   function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (
@@ -45,13 +97,14 @@ export default function SceneMic({
 
     if (isListening) {
       activePointerIdRef.current = null;
-      onStop();
+      ignoreNextClickRef.current = true;
+      stopAfterSignal();
       return;
     }
 
     activePointerIdRef.current = event.pointerId;
     event.currentTarget.setPointerCapture(event.pointerId);
-    onStart();
+    startAfterSignal();
   }
 
   function handlePointerUp(event: PointerEvent<HTMLButtonElement>) {
@@ -61,13 +114,14 @@ export default function SceneMic({
 
     event.preventDefault();
     activePointerIdRef.current = null;
+    ignoreNextClickRef.current = true;
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
 
     unlockReplyAudio();
-    onStop();
+    stopAfterSignal();
   }
 
   function handlePointerCancel(event: PointerEvent<HTMLButtonElement>) {
@@ -81,16 +135,21 @@ export default function SceneMic({
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
 
-    onStop();
+    stopAfterSignal();
   }
 
   function handleClick() {
+    if (ignoreNextClickRef.current) {
+      ignoreNextClickRef.current = false;
+      return;
+    }
+
     if (!isListening) {
       return;
     }
 
     activePointerIdRef.current = null;
-    onStop();
+    stopAfterSignal();
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -107,7 +166,7 @@ export default function SceneMic({
     event.preventDefault();
     unlockReplyAudio();
     keyboardHoldActiveRef.current = true;
-    onStart();
+    startAfterSignal();
   }
 
   function handleKeyUp(event: KeyboardEvent<HTMLButtonElement>) {
@@ -118,21 +177,30 @@ export default function SceneMic({
     event.preventDefault();
     keyboardHoldActiveRef.current = false;
 
-    onStop();
+    stopAfterSignal();
   }
 
   function handleBlur() {
     if (!keyboardHoldActiveRef.current) {
+      clearPendingStart();
       return;
     }
 
     keyboardHoldActiveRef.current = false;
-    onStop();
+    stopAfterSignal();
   }
+
+  const micClassName = [
+    "scene-mic",
+    isListening ? "scene-mic--active" : "",
+    isPrimed ? "scene-mic--primed" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
-      className={`scene-mic ${isListening ? "scene-mic--active" : ""}`}
+      className={micClassName}
       type="button"
       onBlur={handleBlur}
       onClick={handleClick}
@@ -150,7 +218,13 @@ export default function SceneMic({
       }
       disabled={(isBusy || !speechAvailable) && !isListening}
     >
-      <span className="scene-mic-icon" aria-hidden="true" />
+      <span className="scene-mic-icon" aria-hidden="true">
+        <span className="scene-mic-meter">
+          <i />
+          <i />
+          <i />
+        </span>
+      </span>
       <span className="scene-mic-text">
         <span className="scene-mic-copy">{prompt}</span>
         <span className="scene-mic-hint">{copy.micAudioHint}</span>
