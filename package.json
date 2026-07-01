@@ -13,6 +13,7 @@
     "dev:server": "tsx watch src/server/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.server.json",
     "build": "npm run typecheck && vite build && tsc -p tsconfig.server.json",
+    "package:lambda": "scripts/lambda/package.sh",
     "test:quest": "tsx scripts/quest-tests/run-all.ts",
     "test:quest:state": "tsx scripts/quest-tests/state.test.ts",
     "test:quest:transitions": "tsx scripts/quest-tests/transitions.test.ts",
@@ -27,7 +28,6 @@
     "preview": "vite preview --host 0.0.0.0",
     "infra:plan": "scripts/infra/plan.sh",
     "infra:apply": "scripts/infra/apply.sh",
-    "deploy:railway": "scripts/railway/deploy-web.sh",
     "deploy:cloudfront": "scripts/cloudfront/deploy-frontend.sh",
     "elevenlabs:sfx:fixel": "node scripts/elevenlabs-fixel-sfx.mjs",
     "elevenlabs:mcp:create": "node scripts/elevenlabs-mcp.mjs create",
@@ -40,15 +40,18 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "serverless-http": "^4.0.0"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.162",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "concurrently": "^9.2.1",
+    "esbuild": "^0.28.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.7"

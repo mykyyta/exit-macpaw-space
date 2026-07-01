@@ -10,5 +10,7 @@ if [[ -z "$AWS_PROFILE" ]]; then
   exit 1
 fi
 
+npm run package:lambda
+
 AWS_PROFILE="$AWS_PROFILE" terraform -chdir=infra init -backend-config="backend.hcl"
 AWS_PROFILE="$AWS_PROFILE" terraform -chdir=infra plan -var-file="app.tfvars"

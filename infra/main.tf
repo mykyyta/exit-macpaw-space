@@ -20,11 +20,19 @@ provider "aws" {
   region = "us-east-1"
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
-  bucket_name           = "${var.project_slug}-frontend"
+  bucket_name           = "${var.project_slug}-frontend-${data.aws_caller_identity.current.account_id}"
   leaderboard_table     = "${var.project_slug}-leaderboard"
+  api_lambda_name       = "${var.project_slug}-api"
+  edge_lambda_name      = "${var.project_slug}-api-content-sha256-edge"
+  api_lambda_zip        = "${path.module}/../.lambda-build/function.zip"
+  edge_lambda_zip       = "${path.module}/../.lambda-build/edge-content-sha256.zip"
   s3_origin_id          = "s3-frontend"
-  railway_api_origin_id = "railway-api"
+  lambda_api_origin_id  = "lambda-api"
+  lambda_api_domain     = trimsuffix(trimprefix(aws_lambda_function_url.api.function_url, "https://"), "/")
+  origin_secret         = lookup(var.lambda_environment_variables, "CLOUDFRONT_ORIGIN_SECRET", "")
   custom_domain_enabled = trimspace(var.custom_domain_name) != ""
   custom_domain_alias   = local.custom_domain_enabled && var.enable_custom_domain_alias
 }
@@ -68,9 +76,139 @@ resource "aws_dynamodb_table" "leaderboard" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/aws/lambda/${local.api_lambda_name}"
+  retention_in_days = 14
+}
+
+resource "aws_iam_role" "api_lambda" {
+  name = "${var.project_slug}-api-lambda"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "api_lambda" {
+  name = "${var.project_slug}-api-lambda"
+  role = aws_iam_role.api_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.api.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:Query"
+        ]
+        Resource = aws_dynamodb_table.leaderboard.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "edge_lambda" {
+  name = "${var.project_slug}-edge-lambda"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = [
+          "lambda.amazonaws.com",
+          "edgelambda.amazonaws.com"
+        ]
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "edge_lambda_basic" {
+  role       = aws_iam_role.edge_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_lambda_function" "api" {
+  function_name    = local.api_lambda_name
+  role             = aws_iam_role.api_lambda.arn
+  filename         = local.api_lambda_zip
+  source_code_hash = filebase64sha256(local.api_lambda_zip)
+  handler          = "index.handler"
+  runtime          = var.lambda_runtime
+  memory_size      = var.lambda_memory_size
+  timeout          = var.lambda_timeout_seconds
+  architectures    = ["arm64"]
+
+  environment {
+    variables = merge(
+      {
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
+        LEADERBOARD_TABLE_NAME              = aws_dynamodb_table.leaderboard.name
+      },
+      var.lambda_environment_variables
+    )
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.api,
+    aws_iam_role_policy.api_lambda
+  ]
+}
+
+resource "aws_lambda_function_url" "api" {
+  function_name      = aws_lambda_function.api.function_name
+  authorization_type = "AWS_IAM"
+
+  cors {
+    allow_credentials = false
+    allow_methods     = ["*"]
+    allow_origins     = ["*"]
+    allow_headers     = ["*"]
+    max_age           = 0
+  }
+}
+
+resource "aws_lambda_function" "edge_content_sha256" {
+  provider         = aws.us_east_1
+  function_name    = local.edge_lambda_name
+  role             = aws_iam_role.edge_lambda.arn
+  filename         = local.edge_lambda_zip
+  source_code_hash = filebase64sha256(local.edge_lambda_zip)
+  handler          = "edge-content-sha256.handler"
+  runtime          = var.lambda_runtime
+  memory_size      = 128
+  timeout          = 5
+  publish          = true
+}
+
 resource "aws_cloudfront_origin_access_control" "frontend" {
   name                              = "${var.project_slug}-frontend-oac"
   origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+resource "aws_cloudfront_origin_access_control" "api" {
+  name                              = "${var.project_slug}-api-oac"
+  origin_access_control_origin_type = "lambda"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
 }
@@ -100,8 +238,14 @@ resource "aws_cloudfront_distribution" "app" {
   }
 
   origin {
-    domain_name = var.railway_api_domain
-    origin_id   = local.railway_api_origin_id
+    domain_name              = local.lambda_api_domain
+    origin_id                = local.lambda_api_origin_id
+    origin_access_control_id = aws_cloudfront_origin_access_control.api.id
+
+    custom_header {
+      name  = "x-cloudfront-origin-secret"
+      value = local.origin_secret
+    }
 
     custom_origin_config {
       http_port              = 80
@@ -124,17 +268,23 @@ resource "aws_cloudfront_distribution" "app" {
     path_pattern             = "/api/*"
     allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods           = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id         = local.railway_api_origin_id
+    target_origin_id         = local.lambda_api_origin_id
     viewer_protocol_policy   = "redirect-to-https"
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+
+    lambda_function_association {
+      event_type   = "origin-request"
+      include_body = true
+      lambda_arn   = aws_lambda_function.edge_content_sha256.qualified_arn
+    }
   }
 
   ordered_cache_behavior {
     path_pattern             = "/health"
     allowed_methods          = ["GET", "HEAD", "OPTIONS"]
     cached_methods           = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id         = local.railway_api_origin_id
+    target_origin_id         = local.lambda_api_origin_id
     viewer_protocol_policy   = "redirect-to-https"
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
@@ -159,6 +309,23 @@ resource "aws_cloudfront_distribution" "app" {
       error_message = "enable_custom_domain_alias requires custom_domain_name."
     }
   }
+}
+
+resource "aws_lambda_permission" "allow_cloudfront_function_url" {
+  statement_id           = "AllowCloudFrontFunctionUrl"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.api.function_name
+  principal              = "cloudfront.amazonaws.com"
+  source_arn             = aws_cloudfront_distribution.app.arn
+  function_url_auth_type = "AWS_IAM"
+}
+
+resource "aws_lambda_permission" "allow_cloudfront_invoke_function" {
+  statement_id  = "AllowCloudFrontInvokeFunction"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api.function_name
+  principal     = "cloudfront.amazonaws.com"
+  source_arn    = aws_cloudfront_distribution.app.arn
 }
 
 resource "aws_s3_bucket_policy" "frontend" {

@@ -39,3 +39,11 @@ output "cloudfront_alias_hosted_zone_id" {
 output "leaderboard_table_name" {
   value = aws_dynamodb_table.leaderboard.name
 }
+
+output "api_lambda_function_name" {
+  value = aws_lambda_function.api.function_name
+}
+
+output "api_lambda_function_url" {
+  value = aws_lambda_function_url.api.function_url
+}

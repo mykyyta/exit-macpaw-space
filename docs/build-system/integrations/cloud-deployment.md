@@ -1,37 +1,42 @@
 ---
-last_updated: 2026-05-07
+last_updated: 2026-06-30
 owner: Architect
 ---
 
 # Cloud Deployment
 
-This project can deploy as a small CloudFront + Railway stack when the pet
-project needs a stable public URL.
+This project can deploy as a small CloudFront + Lambda stack when the pet
+project needs a stable public URL without a developer-owned server process.
 
 ## Decision
 
 - **Frontend edge entrypoint:** AWS S3 + CloudFront in the project AWS account.
-- **Backend runtime:** one Railway web service in the project Railway account.
+- **Backend runtime:** one AWS Lambda function exposed through a Lambda Function
+  URL and reached by CloudFront.
+- **Lambda runtime:** `nodejs22.x` for the first cutover, matching the current
+  Terraform AWS provider support in this repo.
 - **Environment model:** one cloud environment only. Do not create separate
   staging and production stacks for this prototype.
 - **Public request shape:** CloudFront is the browser-facing URL. It serves
-  static Vite assets from S3 and routes `/api/*` plus `/health` to Railway.
-- **Custom domain:** when a stable branded URL is needed and the parent Route53
-  hosted zone is owned by another AWS account, keep DNS records in that parent
-  account. This Terraform stack creates the ACM certificate and CloudFront alias
-  configuration only; the parent zone owner manually adds ACM validation and
-  CloudFront alias records. The default CloudFront URL remains live as a
-  fallback after the custom domain alias is added.
+  static Vite assets from S3 and routes `/api/*` plus `/health` to the Lambda
+  Function URL origin.
+- **Custom domain:** `https://exit-macpaw-space.mykyyta.link` is the active
+  public URL. The parent Route53 hosted zone lives in a separate AWS account, so
+  DNS records stay in that parent account. This Terraform stack creates the ACM
+  certificate and CloudFront alias configuration only; the parent zone owner
+  manually adds ACM validation and CloudFront alias records. The default
+  CloudFront URL remains live as a fallback after the custom domain alias is
+  added.
 - **Terraform state:** use an S3 backend configured through local
   `infra/backend.hcl`.
 - **AWS profile:** set `AWS_PROFILE` for privileged AWS and Terraform commands.
 
 ## Why This Shape Is Sufficient
 
-The current app is a Vite client plus one Express API. It does not need a
-workers, queues, custom auth, or a separate API domain for the current product
-shape. Add durable storage behind Express when a product feature needs it.
-Routing API traffic through CloudFront keeps browser requests
+The current app is a Vite client plus one Express API. It does not need
+workers, queues, custom auth, API Gateway, or a separate API domain for the
+current product shape. Add durable storage behind Express when a product feature
+needs it. Routing API traffic through CloudFront keeps browser requests
 same-origin and avoids adding CORS surface area.
 
 ## Runtime Boundary
@@ -41,23 +46,37 @@ Browser
   -> optional custom domain
       -> CloudFront
       -> S3 frontend origin for /* static assets
-      -> Railway origin for /api/* and /health
-          -> Express server
+      -> Lambda Function URL origin for /api/* and /health
+          -> Lambda@Edge origin-request body hash helper for body-bearing API requests
+          -> Express app through Lambda handler
               -> Claude, Gemini, ElevenLabs provider APIs, and storage adapters
 ```
 
-Secrets stay in Railway service variables. The built frontend must not contain
-provider API keys or AWS credentials.
+Secrets stay in the server-side runtime. For Lambda, configure provider API keys,
+`LEADERBOARD_COMPLETION_TOKEN_SECRET`, and `CLOUDFRONT_ORIGIN_SECRET` through
+Lambda environment variables or a secret store, not in the built frontend.
+DynamoDB access should use the Lambda IAM role, not committed AWS access keys.
+
+Terraform-managed Lambda environment variables are stored in Terraform state.
+Use the private backend only, and keep real values in local `infra/app.tfvars`
+or another approved secret-management path.
 
 ## Local Files
 
-- `railway.toml` defines the Railway build and start command.
-- `infra/` defines the S3 bucket, CloudFront distribution, S3 origin access
-  control, API origin routing, optional ACM certificate, optional CloudFront
-  aliases, and outputs for parent-zone DNS records.
+- `src/server/app.ts` exports the reusable Express app.
+- `src/server/index.ts` starts the local or long-running Node server.
+- `src/server/lambda.ts` exports the Lambda handler.
+- `scripts/lambda/package.sh` bundles the Lambda handler into
+  `.lambda-build/function.zip`.
+- `scripts/lambda/edge-content-sha256.cjs` is the Lambda@Edge origin-request
+  helper that adds `x-amz-content-sha256` for POST/PUT/PATCH requests before
+  CloudFront OAC signs requests to the Lambda Function URL origin.
+- `infra/` defines the S3 bucket, Lambda API runtime, Lambda Function URL,
+  Lambda@Edge helper, CloudFront distribution, origin access controls, API
+  origin routing, optional ACM certificate, optional CloudFront aliases, and
+  outputs for parent-zone DNS records.
 - `scripts/infra/plan.sh` runs a Terraform plan.
 - `scripts/infra/apply.sh` applies the reviewed Terraform plan.
-- `scripts/railway/deploy-web.sh` deploys the web service.
 - `scripts/cloudfront/deploy-frontend.sh` builds, uploads to S3,
   and invalidates CloudFront after Terraform has been applied.
 
@@ -71,8 +90,8 @@ cp infra/app.tfvars.example infra/app.tfvars
 ```
 
 Fill `infra/backend.hcl` with the real Terraform state bucket, key, region, and
-lock table. Fill `infra/app.tfvars` with the real project slug and Railway
-public domain. The Railway domain must not include `https://`.
+lock table. Fill `infra/app.tfvars` with the real project slug and Lambda
+environment variables needed by the providers used in the live product.
 
 To attach a custom domain whose parent domain is hosted in another Route53
 account, use a two-step parent-zone alias flow:
@@ -96,8 +115,8 @@ account, use a two-step parent-zone alias flow:
 The Terraform stack intentionally does not mutate the parent hosted zone. That
 boundary keeps the parent domain owner separate from this app's infrastructure.
 
-Before deploying Railway, set service variables for any providers or storage
-adapters used by the product:
+Before applying Terraform for Lambda, set server-side environment variables for
+any providers or storage adapters used by the product:
 
 - `CLAUDE_API_KEY`
 - `CLAUDE_MODEL`
@@ -106,21 +125,17 @@ adapters used by the product:
 - `ELEVENLABS_API_KEY`
 - `ELEVENLABS_STT_MODEL`
 - `DEMO_API_TOKEN` if paid routes are exposed beyond the demo team
-- `LEADERBOARD_TABLE_NAME` and `LEADERBOARD_COMPLETION_TOKEN_SECRET` when
-  persistent leaderboard storage is enabled
-- AWS credential variables for Railway when it writes to DynamoDB
-  (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optionally `AWS_REGION`;
-  region defaults to `eu-central-1`)
+- `LEADERBOARD_COMPLETION_TOKEN_SECRET` when persistent leaderboard storage is
+  enabled. Terraform sets `LEADERBOARD_TABLE_NAME` from the managed DynamoDB
+  table.
+- `CLOUDFRONT_ORIGIN_SECRET` so the Express API can reject direct Function URL
+  requests that do not come through CloudFront.
+- Do not set AWS access keys for DynamoDB in Lambda. Terraform grants the Lambda
+  IAM role `dynamodb:PutItem` and `dynamodb:Query` on the leaderboard table.
 
 ## Command Order
 
 Run only after confirming that external resource creation is approved:
-
-```bash
-npm run deploy:railway
-```
-
-Create or copy the Railway public domain into `infra/app.tfvars`, then plan:
 
 ```bash
 AWS_PROFILE=<profile> npm run infra:plan
@@ -136,33 +151,53 @@ AWS_PROFILE=<profile> npm run infra:apply
 AWS_PROFILE=<profile> npm run deploy:cloudfront
 ```
 
+`npm run infra:plan` and `npm run infra:apply` package the Lambda handler before
+running Terraform. `npm run deploy:cloudfront` builds and uploads the static
+frontend assets and invalidates the distribution.
+
+## Cutover And Rollback
+
+The Lambda origin has passed smoke tests through CloudFront and the custom
+domain. The previous Railway service `vibecoding-colective-macpaw` was deleted
+on 2026-06-30, so rollback now means redeploying this Terraform-managed AWS
+stack or restoring from source into another runtime.
+
+The safe cutover sequence is:
+
+1. Build and package the Lambda handler locally.
+2. Run and review `AWS_PROFILE=<profile> npm run infra:plan`.
+3. Apply Terraform only after approval.
+4. Smoke-test the CloudFront URL for `/`, `/health`, `/api/status`, a full
+   `/api/voice-turn`, ElevenLabs STT session creation, recorded STT with a small
+   audio sample, and leaderboard read/write after quest completion.
+5. Attach the custom domain after ACM validation is complete.
+6. Remove or archive any obsolete non-AWS runtime only after a successful
+   verification window.
+
 ## GitHub Actions
 
 Automatic deployment from `main` is disabled for controlled demo operations.
-Use the manual `workflow_dispatch` trigger in `.github/workflows/deploy-main.yml`
-when the production backend and frontend should be refreshed.
+Use a manual workflow only after the Lambda deployment path has equivalent
+packaging and smoke-test steps.
 
 The workflow:
 
 1. installs dependencies;
 2. typechecks;
-3. deploys Railway service `vibecoding-colective-macpaw`;
-4. waits for the Railway deployment to reach `SUCCESS`;
+3. packages the Lambda handler;
+4. applies the reviewed Terraform or updates the Lambda function code through an
+   approved deployment path;
 5. builds and uploads frontend assets to S3;
 6. creates a CloudFront invalidation;
 7. smoke-tests `/`, `/health`, and `/api/status` through CloudFront.
 
 Required GitHub repository secrets:
 
-- `RAILWAY_TOKEN`
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 
 Required GitHub repository variables:
 
-- `RAILWAY_PROJECT_ID`
-- `RAILWAY_ENVIRONMENT`
-- `RAILWAY_SERVICE`
 - `AWS_REGION`
 - `AWS_S3_FRONTEND_BUCKET`
 - `CLOUDFRONT_DISTRIBUTION_ID`
@@ -173,17 +208,27 @@ create or mutate Terraform-managed infrastructure.
 
 ## Risks And Mitigations
 
-- **Paid resources:** Railway service, S3, CloudFront, and DynamoDB can incur
+- **Paid resources:** Lambda, CloudFront, S3, CloudWatch Logs, and DynamoDB can incur
   cost. Apply only after approval.
 - **Wrong account:** always set `AWS_PROFILE` explicitly before privileged
   commands.
-- **Broken API origin:** CloudFront needs the exact Railway domain before
-  Terraform apply.
+- **Broken API origin:** CloudFront must route `/api/*` and `/health` to the
+  Lambda Function URL origin, sign requests with CloudFront OAC, and send the
+  `x-cloudfront-origin-secret` custom header. Body-bearing API requests also
+  need the Lambda@Edge origin-request helper so `x-amz-content-sha256` matches
+  the body before OAC signs the origin request. The Express app rejects requests
+  without the custom header when `CLOUDFRONT_ORIGIN_SECRET` is configured.
 - **Incomplete DNS validation:** CloudFront will reject the custom domain until
   the ACM certificate is issued. Add the ACM validation `CNAME` in the parent
   Route53 zone before enabling `enable_custom_domain_alias`.
-- **Secret exposure:** keep provider keys and AWS credentials in Railway
-  variables only.
+- **Secret exposure:** keep provider keys in the server-side runtime only, and
+  use the Lambda IAM role for DynamoDB instead of AWS access keys.
+- **Terraform state exposure:** if Lambda environment variables are managed by
+  Terraform, secret values are present in Terraform state. Use the private
+  backend and never commit real `infra/app.tfvars`.
+- **Cold starts:** first requests after idle periods can be slower than an
+  always-on web service. Measure real turn latency before deciding whether
+  provisioned concurrency is worth the cost.
 - **CloudFront propagation:** distribution and invalidations can take minutes;
   keep the local tunnel path as a fallback during development.
 - **Custom domain fallback:** keep the default CloudFront distribution URL
@@ -191,6 +236,9 @@ create or mutate Terraform-managed infrastructure.
 
 ## Live Resource Outputs
 
-Live resource identifiers are intentionally kept out of public docs. Read them
-from Terraform outputs, Railway, AWS, or GitHub repository variables when
-operating the deployment.
+- Public URL: `https://exit-macpaw-space.mykyyta.link`
+- CloudFront fallback URL: read `cloudfront_distribution_domain_name` from
+  Terraform outputs.
+- Other live resource identifiers are intentionally kept out of public docs.
+  Read them from Terraform outputs, AWS, or GitHub repository variables when
+  operating the deployment.

@@ -12,7 +12,8 @@ deployment second.
 
 - **Language:** TypeScript.
 - **Client:** Vite + React.
-- **Server:** Node.js + Express.
+- **Server:** Node.js + Express, deployable as either a local process or an AWS
+  Lambda handler.
 - **Shared contracts:** TypeScript types in `src/shared/`.
 - **Local delivery:** one `npm run dev` command starts client and server.
 - **External access:** expose the local client or server with ngrok or Cloudflare Tunnel for temporary callback testing; use the cloud runtime for stable public access.
@@ -52,6 +53,7 @@ For cloud deployment, build output is:
 
 - `dist/` for the client;
 - `dist/server/` for the compiled server.
+- `.lambda-build/function.zip` for the Lambda API handler.
 
 ## Commands
 
@@ -60,6 +62,7 @@ npm install
 npm run dev
 npm run typecheck
 npm run build
+npm run package:lambda
 npm start
 ```
 
@@ -89,6 +92,10 @@ npm start
 - DynamoDB configuration belongs in server-side environment variables when a
   persistent storage adapter is introduced. Do not expose AWS credentials to the
   browser.
+- In the AWS Lambda runtime, DynamoDB access should come from the Lambda IAM
+  role. Provider API keys and completion-token secrets stay in Lambda
+  environment variables or another server-side secret store, never in the
+  frontend bundle.
 
 ## Client Layout
 

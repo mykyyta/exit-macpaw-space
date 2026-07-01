@@ -3,8 +3,21 @@
 
 project_slug = "your-project-slug"
 
-# Railway public domain for the Express API, without https://.
-railway_api_domain = "your-service-production.up.railway.app"
+# Additional Lambda environment variables. Keep real values in infra/app.tfvars
+# only; this file is an example and must not contain secrets.
+# Note: Terraform stores Lambda environment variable values in state.
+lambda_environment_variables = {
+  CLAUDE_API_KEY                       = ""
+  CLAUDE_MODEL                         = "claude-sonnet-4-5"
+  GEMINI_API_KEY                       = ""
+  GEMINI_MODEL                         = "gemini-2.5-flash"
+  ELEVENLABS_API_KEY                   = ""
+  ELEVENLABS_STT_MODEL                 = "scribe_v2_realtime"
+  CLOUDFRONT_ORIGIN_SECRET             = ""
+  LEADERBOARD_ID                       = "exit-macpaw-space:v1"
+  LEADERBOARD_COMPLETION_TOKEN_SECRET  = ""
+  LEADERBOARD_MAX_ENTRIES              = "10"
+}
 
 # Optional browser-facing custom domain for CloudFront.
 # Use the real user-facing domain only when you intend to expose it.

@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-05-07
+last_updated: 2026-06-30
 owner: Architect
 ---
 
@@ -17,19 +17,19 @@ temporary external callback testing. Use **cloud deployment** when the product
 needs a stable public backend, persistent storage, a long-lived MCP server, or
 shareable access while the laptop is offline.
 
-For the CloudFront + Railway path requested on 2026-05-06, use
+For the CloudFront + Lambda path accepted on 2026-06-30, use
 `docs/build-system/integrations/cloud-deployment.md` as the deployment contract.
-The cloud path keeps CloudFront as the public entrypoint and Railway as the
-single Express runtime.
+The cloud path keeps CloudFront as the public entrypoint and Lambda Function URL
+as the serverless Express runtime.
 
 | Need | Default choice | Why |
 | --- | --- | --- |
 | Local development | Local app | Fastest path while the feature is changing. |
 | Temporary webhook or MCP URL | Local app + ngrok or Cloudflare Tunnel | Gives ElevenLabs a public HTTPS URL with minimal ceremony. |
 | Frontend-only product slice that must stay online | Vercel | Fast Git or CLI deployment, preview URLs, environment variables. |
-| Public backend, API, or MCP server that should stay reachable | Railway | Simple GitHub or CLI deploy, public domain generation, normal web service model. |
+| Public backend or API that should stay reachable without a developer server | CloudFront + Lambda Function URL | Serverless runtime with no long-running service to keep alive. |
 | Durable product data such as leaderboard entries | Express API + DynamoDB | Keeps writes server-side and survives local restarts. |
-| Public backend backup option | Render | Simple persistent web service hosting with public URL and env vars. |
+| Public backend backup option | Render or another approved web service host | Conventional always-on web service hosting if Lambda is a poor fit. |
 
 ## Option A: Local Tunnel
 
@@ -124,46 +124,55 @@ npx vercel
 npx vercel --prod
 ```
 
-## Option C: Railway
+## Option C: CloudFront + Lambda Function URL
 
-Use this as the default cloud path when the product needs a public backend or MCP server that should stay reachable without the local machine.
+Use this as the default cloud path when the product needs a public backend that
+should stay reachable without the local machine or a developer-owned server
+process.
 
 Good for:
 
-- Express, Fastify, Hono, FastAPI, or similar HTTP servers;
-- public MCP server URL;
-- apps that need a normal long-running process;
-- quick GitHub or CLI deploys.
+- Express routes that fit request/response HTTP;
+- server-side provider API calls;
+- same-origin `/api/*` requests behind CloudFront;
+- durable leaderboard writes through DynamoDB.
 
 Implementation requirements:
 
-- Server must listen on `0.0.0.0`.
-- Server must use `process.env.PORT` or the equivalent in its runtime.
-- Secrets must be configured as Railway service variables, not committed.
-- Generate a public domain for the service before registering it in ElevenLabs.
+- Express app must be importable without starting a listener.
+- Lambda handler must be packaged before Terraform plan/apply.
+- Secrets must be configured as Lambda environment variables or an approved
+  secret store, not committed.
+- DynamoDB access should use the Lambda IAM role.
+- CloudFront should be the browser-facing entrypoint and route `/api/*` plus
+  `/health` to the Lambda Function URL origin.
 
 Prepared command shape:
 
 ```bash
-railway init
-railway up
+AWS_PROFILE=<profile> npm run infra:plan
+AWS_PROFILE=<profile> npm run infra:apply
+AWS_PROFILE=<profile> npm run deploy:cloudfront
 ```
 
-## Option D: Render
+## Option D: Always-On Web Service Host
 
-Use this as a backup for a persistent public backend if Railway is unavailable.
+Use this as a backup for a persistent public backend if Lambda Function URL is a
+poor fit for latency, streaming, or runtime constraints.
 
 Good for:
 
 - Node, Python, or Docker web services;
-- stable public `onrender.com` URL;
+- stable public service URLs;
 - a conventional always-on web service model.
 
 Implementation requirements:
 
 - Server must bind to `0.0.0.0`.
 - Server must read the platform port from the environment.
-- Secrets must be configured in Render, not committed.
+- Secrets must be configured in the platform, not committed.
+- Add a platform-specific deployment script only when this option is selected
+  again.
 
 ## Runtime Checklist
 
@@ -183,15 +192,15 @@ For temporary tunnel testing:
 3. Copy the tunnel URL into ElevenLabs MCP setup if needed.
 4. Run `npm run elevenlabs:mcp:create`.
 5. Run `npm run elevenlabs:mcp:tools -- <mcp_server_id>` to confirm tool visibility.
-6. Deploy to Vercel, Railway, or Render when the URL or runtime must be stable.
+6. Deploy to the CloudFront + Lambda path when the URL or runtime must be stable.
 
 ## References
 
 - [ElevenLabs MCP tools](https://elevenlabs.io/docs/eleven-agents/customization/tools/mcp)
 - [Vercel deployments](https://vercel.com/docs/deployments/deployment-methods)
 - [Vercel environment variables](https://vercel.com/docs/projects/environment-variables)
-- [Railway quick start](https://docs.railway.com/quick-start)
-- [Railway public networking](https://docs.railway.com/deploy/exposing-your-app)
+- [AWS Lambda Function URLs](https://docs.aws.amazon.com/lambda/latest/dg/urls-configuration.html)
+- [CloudFront OAC for Lambda Function URLs](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html)
 - [Render web services](https://render.com/docs/web-services/)
 - [ngrok secure tunnels](https://ngrok.com/docs/guides/share-localhost/tunnels)
 - [Cloudflare Tunnel](https://developers.cloudflare.com/tunnel/)

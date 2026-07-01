@@ -16,7 +16,7 @@ pet-project direction rather than a one-off event prototype.
 - `build-system/standards/documentation.md` — documentation structure and lifecycle.
 - `build-system/integrations/elevenlabs-mcp.md` — ElevenLabs MCP setup notes.
 - `build-system/integrations/deployment-options.md` — local tunnel and durable deployment paths.
-- `build-system/integrations/cloud-deployment.md` — CloudFront + Railway deployment contract.
+- `build-system/integrations/cloud-deployment.md` — CloudFront + Lambda deployment contract.
 - `work/readme.md` — temporary execution control plane.
 
 ## Rule

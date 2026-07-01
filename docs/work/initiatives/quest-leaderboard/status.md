@@ -63,10 +63,12 @@ configuration and GitHub repository variables.
   `PAY_PER_REQUEST` billing and keys `leaderboardId` + `createdKey`.
 - `AWS_PROFILE=<profile> terraform -chdir=infra plan -var-file=app.tfvars`
   returned `No changes`.
-- Railway variables were configured for DynamoDB-backed leaderboard storage.
-- `npm run deploy:railway` deployed the backend successfully.
-- Railway `/health` returned `{"ok":true}`.
-- Railway `/api/leaderboard?limit=3` returned an empty newest-first leaderboard.
+- Historical note: before the Lambda runtime migration, Railway variables were
+  configured for DynamoDB-backed leaderboard storage and the Railway backend was
+  deployed successfully.
+- Historical Railway `/health` returned `{"ok":true}`.
+- Historical Railway `/api/leaderboard?limit=3` returned an empty newest-first
+  leaderboard.
 - `AWS_PROFILE=<profile> npm run deploy:cloudfront` uploaded frontend assets
   and created CloudFront invalidation `ICG0RNUFYA5L7GQLHVOJ3L4551`.
 - CloudFront invalidation completed.
