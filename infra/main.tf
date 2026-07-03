@@ -297,10 +297,10 @@ resource "aws_cloudfront_distribution" "app" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = local.custom_domain_alias ? null : true
-    acm_certificate_arn            = local.custom_domain_alias ? aws_acm_certificate.app[0].arn : null
-    ssl_support_method             = local.custom_domain_alias ? "sni-only" : null
-    minimum_protocol_version       = local.custom_domain_alias ? "TLSv1.2_2021" : "TLSv1"
+    cloudfront_default_certificate = local.custom_domain_enabled ? null : true
+    acm_certificate_arn            = local.custom_domain_enabled ? aws_acm_certificate.app[0].arn : null
+    ssl_support_method             = local.custom_domain_enabled ? "sni-only" : null
+    minimum_protocol_version       = local.custom_domain_enabled ? "TLSv1.2_2021" : "TLSv1"
   }
 
   lifecycle {

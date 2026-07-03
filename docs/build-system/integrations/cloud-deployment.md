@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-06-30
+last_updated: 2026-07-03
 owner: Architect
 ---
 
@@ -11,6 +11,8 @@ project needs a stable public URL without a developer-owned server process.
 ## Decision
 
 - **Frontend edge entrypoint:** AWS S3 + CloudFront in the project AWS account.
+- **Project AWS account:** the active project-owned AWS account is
+  `273354659544`, operated locally through profile `mykyyta-personal`.
 - **Backend runtime:** one AWS Lambda function exposed through a Lambda Function
   URL and reached by CloudFront.
 - **Lambda runtime:** `nodejs22.x` for the first cutover, matching the current
@@ -21,12 +23,11 @@ project needs a stable public URL without a developer-owned server process.
   static Vite assets from S3 and routes `/api/*` plus `/health` to the Lambda
   Function URL origin.
 - **Custom domain:** `https://exit-macpaw-space.mykyyta.link` is the active
-  public URL. The parent Route53 hosted zone lives in a separate AWS account, so
-  DNS records stay in that parent account. This Terraform stack creates the ACM
-  certificate and CloudFront alias configuration only; the parent zone owner
-  manually adds ACM validation and CloudFront alias records. The default
-  CloudFront URL remains live as a fallback after the custom domain alias is
-  added.
+  public URL. The Route53 hosted zone lives in `mykyyta-personal`. This
+  Terraform stack creates the ACM certificate and CloudFront alias configuration
+  only; Route53 DNS records are applied separately in the same personal account.
+  The default CloudFront URL remains live as a fallback after the custom domain
+  alias is added.
 - **Terraform state:** use an S3 backend configured through local
   `infra/backend.hcl`.
 - **AWS profile:** set `AWS_PROFILE` for privileged AWS and Terraform commands.
@@ -93,27 +94,28 @@ Fill `infra/backend.hcl` with the real Terraform state bucket, key, region, and
 lock table. Fill `infra/app.tfvars` with the real project slug and Lambda
 environment variables needed by the providers used in the live product.
 
-To attach a custom domain whose parent domain is hosted in another Route53
-account, use a two-step parent-zone alias flow:
+To attach a custom domain, use a two-step alias flow:
 
 1. Set `custom_domain_name` in `infra/app.tfvars` to the desired app subdomain,
    and keep `enable_custom_domain_alias = false`.
 2. Run `AWS_PROFILE=<profile> npm run infra:apply`. Terraform creates the ACM
    certificate in `us-east-1` and outputs
    `custom_domain_certificate_validation_records`.
-3. In the parent Route53 hosted zone, add the output `CNAME` record for ACM DNS
-   validation.
+3. In the Route53 hosted zone, add the output `CNAME` record for ACM DNS
+   validation. For the active deployment this zone is in profile
+   `mykyyta-personal`.
 4. Wait until the ACM certificate is `ISSUED`.
 5. Set `enable_custom_domain_alias = true` and run the Terraform apply command
    again. Terraform attaches the custom domain to CloudFront.
-6. In the parent Route53 hosted zone, add either a `CNAME` record from the
+6. In the Route53 hosted zone, add either a `CNAME` record from the
    subdomain to `cloudfront_alias_target`, or `A` and `AAAA` alias records using
    `cloudfront_alias_target` as the alias target and
    `cloudfront_alias_hosted_zone_id` as the CloudFront hosted zone ID. Use
    `CNAME` only for subdomains, not for a root/apex domain.
 
-The Terraform stack intentionally does not mutate the parent hosted zone. That
-boundary keeps the parent domain owner separate from this app's infrastructure.
+The Terraform stack intentionally does not mutate Route53 records. DNS changes
+are operational cutover actions and should be applied explicitly with
+`AWS_PROFILE=mykyyta-personal`.
 
 Before applying Terraform for Lambda, set server-side environment variables for
 any providers or storage adapters used by the product:
@@ -237,6 +239,8 @@ create or mutate Terraform-managed infrastructure.
 ## Live Resource Outputs
 
 - Public URL: `https://exit-macpaw-space.mykyyta.link`
+- AWS account: `273354659544`
+- AWS profile: `mykyyta-personal`
 - CloudFront fallback URL: read `cloudfront_distribution_domain_name` from
   Terraform outputs.
 - Other live resource identifiers are intentionally kept out of public docs.
